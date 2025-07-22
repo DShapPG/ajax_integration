@@ -35,10 +35,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         devices_by_hub[hub_id] = devices
 
 
-    # Сохраняем устройства в hass.data
+    # save devices hass.data
     hass.data[DOMAIN][entry.entry_id]["devices_by_hub"] = devices_by_hub
 
-    # Определяем платформы, которые нужно загрузить
+    # setting platforms
     platforms = set()
 
     for device in devices:
@@ -46,15 +46,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         for platform, _ in mappings:
             platforms.add(platform)
 
-    # Запускаем нужные платформы
-    for platform in platforms:
-        hass.async_create_task(
-            hass.config_entries.async_forward_entry_setup(entry, platform)
-        )
-    # creating alarm panels
-
+    platforms.add("alarm_control_panel")
     hass.async_create_task(
-    hass.config_entries.async_forward_entry_setup(entry, "alarm_control_panel")
-)
+    hass.config_entries.async_forward_entry_setups(entry, list(platforms))
+    )
 
     return True
