@@ -8,6 +8,10 @@ from .api import AjaxAPI
 _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    required_fields = ["session_token", "refresh_token", "user_id", "api_key"]
+    if not all(entry.data.get(k) for k in required_fields):
+        _LOGGER.error("Missing required config entry fields. Setup aborted.")
+        return False
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "session_token": entry.data["session_token"],
@@ -17,7 +21,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "hubs": None,
         "devices": None,  # или []
     }
-    api = AjaxAPI(hass.data[DOMAIN][entry.entry_id])
+    api = AjaxAPI(hass.data[DOMAIN][entry.entry_id], hass, entry)
+    hass.data[DOMAIN][entry.entry_id]["api"] = api
     try:
         hubs = await api.get_hubs()
 

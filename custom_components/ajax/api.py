@@ -16,7 +16,7 @@ class AjaxAPI:
                 "X-Session-Token": self.session_token,
                 "X-Api-Key": self.api_key
             }
-        self.session_created_at = time.time()
+        self.session_created_at = data.get("token_created_at", time.time())
 
 
     def is_token_expired(self):
@@ -52,6 +52,7 @@ class AjaxAPI:
                     **self.entry.data,
                     "session_token": self.session_token,
                     "refresh_token": self.refresh_token,
+                    "token_created_at": self.session_created_at,
                 }
             )
 
