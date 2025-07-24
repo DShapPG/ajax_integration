@@ -1,6 +1,8 @@
 import aiohttp
 import logging
 import time
+import functools
+from aiohttp import ClientResponseError
 _LOGGER = logging.getLogger(__name__)
 class AjaxAPI:
     base_url = "https://api.ajax.systems/api"
@@ -18,18 +20,34 @@ class AjaxAPI:
             }
         self.session_created_at = data.get("token_created_at", time.time())
 
+    def handle_unauthorized(func):
+        @functools.wraps(func)
+        async def wrapper(self, *args, **kwargs):
+            try:
+                return await func(self, *args, **kwargs)
+            except ClientResponseError as e:
+                if e.status == 401:
+                    _LOGGER.warning("🔒 Unauthorized! Trying to refresh token...")
+                    try:
+                        await self.update_refresh_token()
+                        return await func(self, *args, **kwargs)
+                    except Exception as refresh_error:
+                        _LOGGER.error("🔁 Token refresh failed: %s", refresh_error)
+                        raise
+                raise
+        return wrapper
+
 
     def is_token_expired(self):
         return time.time() - self.session_created_at > 14 * 60
 
     async def ensure_token_valid(self):
-        # _LOGGER.error(f"refresh_token checked {self.session_created_at}, time: {time.time()}")
+        _LOGGER.error(f"refresh_token checked {self.session_created_at}, time: {time.time()}")
         if self.is_token_expired():
             await self.update_refresh_token()
 
-
     async def update_refresh_token(self):
-        # _LOGGER.error("refresh_token called")
+        _LOGGER.error("refresh_token called")
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 f"{self.base_url}/refresh",
@@ -55,7 +73,13 @@ class AjaxAPI:
                     "token_created_at": self.session_created_at,
                 }
             )
-
+        if hasattr(self.hass, "data") and hasattr(self.entry, "domain"):
+            self.hass.data[self.entry.domain][self.entry.entry_id].update({
+                "session_token": self.session_token,
+                "refresh_token": self.refresh_token,
+                "token_created_at": self.session_created_at,
+            })
+    @handle_unauthorized
     async def get_hubs(self):
         await self.ensure_token_valid()
         async with aiohttp.ClientSession() as session:
@@ -67,7 +91,7 @@ class AjaxAPI:
         return hubs
         
 
-    
+    @handle_unauthorized
     async def get_hub_info(self, hub_id):
         await self.ensure_token_valid()
         async with aiohttp.ClientSession() as session:
@@ -77,12 +101,23 @@ class AjaxAPI:
             ) as resp:
                 info  = await resp.json()
         _LOGGER.info("DATA_HUB_STATE: %s", hub_id)
+        # Если сервер вернул ошибку авторизации в теле
+        if info.get("message") == "User is not authorized":
+            _LOGGER.warning("User is not authorized in hub_info body, trying to refresh token...")
+            await self.update_refresh_token()
+            # Повторяем запрос с новым токеном
+            async with aiohttp.ClientSession() as session:
+                async with session.get(
+                    f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}",
+                    headers=self.headers
+                ) as resp:
+                    info  = await resp.json()
         if "state" not in info:
             _LOGGER.error("No 'state' in hub info response: %s", info)
             return None
         return info
 
-
+    @handle_unauthorized
     async def arm_hub(self, hub_id):
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/commands/arming"
@@ -100,7 +135,7 @@ class AjaxAPI:
         _LOGGER.info("ARM/DISARM result: %s", result)
         return result
 
-
+    @handle_unauthorized
     async def disarm_hub(self, hub_id):
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/commands/arming"
@@ -119,7 +154,7 @@ class AjaxAPI:
         _LOGGER.info("DISARM result: %s", result)
         return result
 
-
+    @handle_unauthorized
     async def get_hub_devices(self, hub_id):
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/devices"
@@ -132,7 +167,7 @@ class AjaxAPI:
                     result = await resp.json()
                     return result
 
-
+    @handle_unauthorized
     async def get_device_info(self, hub_id, device_id):
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/devices/{device_id}"
@@ -144,3 +179,7 @@ class AjaxAPI:
                 else:
                     result = await resp.json()
                     return result
+
+
+    
+  

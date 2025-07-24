@@ -4,6 +4,7 @@ import logging
 from .device_mapper import map_ajax_device
 from .const import DOMAIN
 from .api import AjaxAPI
+import time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -16,12 +17,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = {
         "session_token": entry.data["session_token"],
         "refresh_token": entry.data["refresh_token"],
+        "token_created_at": entry.data.get("token_created_at", time.time()),
         "user_id": entry.data["user_id"],
         "api_key": entry.data["api_key"],
         "hubs": None,
         "devices": None,  # или []
     }
     api = AjaxAPI(hass.data[DOMAIN][entry.entry_id], hass, entry)
+    await api.update_refresh_token()
     hass.data[DOMAIN][entry.entry_id]["api"] = api
     try:
         hubs = await api.get_hubs()
@@ -54,5 +57,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     platforms.add("alarm_control_panel")
     await hass.config_entries.async_forward_entry_setups(entry, list(platforms))
+    
 
     return True

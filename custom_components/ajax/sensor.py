@@ -9,7 +9,7 @@ async def async_setup_entry(hass, entry, async_add_entities):
     devices_by_hub = hass.data[DOMAIN][entry.entry_id]["devices_by_hub"]
     entities = []
     data = hass.data[DOMAIN][entry.entry_id]
-    api = AjaxAPI(data)
+    api = AjaxAPI(data, hass, entry)
 
     for hub_id, devices in devices_by_hub.items():
         for device in devices:
