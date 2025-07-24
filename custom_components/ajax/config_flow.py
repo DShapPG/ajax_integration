@@ -42,6 +42,7 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         "api_key": user_input["api_key"],
                         "session_token": data["sessionToken"],
                         "user_id": data["userId"],
+                        "refresh_token": data["refreshToken"]
                     },
                 )
 

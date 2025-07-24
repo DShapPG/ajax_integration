@@ -11,6 +11,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "session_token": entry.data["session_token"],
+        "refresh_token": entry.data["refresh_token"],
         "user_id": entry.data["user_id"],
         "api_key": entry.data["api_key"],
         "hubs": None,
@@ -47,8 +48,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             platforms.add(platform)
 
     platforms.add("alarm_control_panel")
-    hass.async_create_task(
-    hass.config_entries.async_forward_entry_setups(entry, list(platforms))
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, list(platforms))
 
     return True

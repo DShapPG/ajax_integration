@@ -23,7 +23,7 @@ class AjaxSwitch(SwitchEntity):
     def __init__(self, device, hub_id):
         self._device = device
         self.hub_id = hub_id
-        self._attr_name = device.get("name")
+        self._attr_name = device.get("deviceName") + f" ({device.get('id')})"
         self._attr_unique_id = f"ajax_{device.get('id')}"
 
     @property
