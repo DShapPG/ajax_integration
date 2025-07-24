@@ -5,11 +5,13 @@ _LOGGER = logging.getLogger(__name__)
 class AjaxAPI:
     base_url = "https://api.ajax.systems/api"
 
-    def __init__(self, data):
+    def __init__(self, data, hass=None, entry=None):
         self.session_token = data["session_token"]
         self.api_key = data["api_key"]
         self.user_id = data["user_id"]
         self.refresh_token = data["refresh_token"]
+        self.hass = hass
+        self.entry = entry
         self.headers = {
                 "X-Session-Token": self.session_token,
                 "X-Api-Key": self.api_key
@@ -42,6 +44,16 @@ class AjaxAPI:
         self.refresh_token = data["refreshToken"]
         self.headers["X-Session-Token"] = self.session_token
         self.session_created_at = time.time()
+        # save new tokens to config_entry
+        if self.hass and self.entry:
+            self.hass.config_entries.async_update_entry(
+                self.entry,
+                data={
+                    **self.entry.data,
+                    "session_token": self.session_token,
+                    "refresh_token": self.refresh_token,
+                }
+            )
 
     async def get_hubs(self):
         await self.ensure_token_valid()

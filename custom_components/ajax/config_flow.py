@@ -37,8 +37,6 @@ class AjaxConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title="Ajax Alarm",
                     data={
-                        "login": user_input["login"],
-                        "password": user_input["password"],
                         "api_key": user_input["api_key"],
                         "session_token": data["sessionToken"],
                         "user_id": data["userId"],
