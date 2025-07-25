@@ -154,6 +154,26 @@ class AjaxAPI:
         _LOGGER.info("DISARM result: %s", result)
         return result
 
+    
+
+    @handle_unauthorized
+    async def arm_hub_night(self, hub_id):
+        await self.ensure_token_valid()
+        url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/commands/arming"
+        payload = {
+            "command": "ARM_NIGHT",
+            "ignoreProblems": True
+        }
+        async with aiohttp.ClientSession() as session:
+            async with session.put(url, json=payload, headers=self.headers) as resp:
+                if resp.status == 204:
+                    _LOGGER.info("Night mode command sent successfully, no content returned.")
+                    return None
+                else:
+                    result = await resp.json()
+        _LOGGER.info("ARM_NIGHT result: %s", result)
+        return result
+
     @handle_unauthorized
     async def get_hub_devices(self, hub_id):
         await self.ensure_token_valid()

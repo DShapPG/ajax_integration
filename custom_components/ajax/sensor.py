@@ -18,6 +18,10 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     continue
                 if meta.get("device_class") == "temperature":
                     entity = FireProtectSensor(device, meta, hub_id, api)
+                elif meta.get("device_class") == "door_temperature":
+                    entity = DoorProtectSensor(device, meta, hub_id, api)  
+                elif meta.get("device_class") == "motion_temperature":
+                    entity = MotionProtectSensor(device, meta, hub_id, api)              
                 else:
                     entity = AjaxSensor(device, meta, hub_id, api)
                 entities.append(entity)
@@ -76,10 +80,6 @@ class FireProtectSensor(AjaxSensor):
     @property
     def extra_state_attributes(self):
         attrs = super().extra_state_attributes.copy()
-        # attrs.update({
-        #     "smoke_alarm": self._smoke_alarm,
-        #     "temperature_alarm": self._temperature_alarm,
-        # })
         return attrs
 
     @property
@@ -98,4 +98,52 @@ class FireProtectSensor(AjaxSensor):
 
             
             
+class DoorProtectSensor(AjaxSensor):
+    def __init__(self, device, meta, hub_id, api):
+        super().__init__(device, meta, hub_id, api)
+        self._temperature = None
 
+    @property
+    def native_value(self):
+        return self._temperature
+
+
+    async def async_update(self):
+        await super().async_update() # updating in parent class
+        device_info = await self.api.get_device_info(self.hub_id, self._device.get('id'))
+        self._temperature = device_info.get('temperature')
+
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, f"ajax_{self._device.get('id')}")},
+            "name": "Ajax DoorProtect",
+            "manufacturer": "Ajax",
+            "model": "DoorProtect",
+        }
+
+class MotionProtectSensor(AjaxSensor):
+    def __init__(self, device, meta, hub_id, api):
+        super().__init__(device, meta, hub_id, api)
+        self._temperature = None
+
+    @property
+    def native_value(self):
+        return self._temperature
+
+
+    async def async_update(self):
+        await super().async_update() # updating in parent class
+        device_info = await self.api.get_device_info(self.hub_id, self._device.get('id'))
+        self._temperature = device_info.get('temperature')
+
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, f"ajax_{self._device.get('id')}")},
+            "name": "Ajax MotionProtect",
+            "manufacturer": "Ajax",
+            "model": "MotionProtect",
+        }

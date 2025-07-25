@@ -20,6 +20,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
                     entity = FireProtectBinarySensor(device, meta, hub_id, api)
                 elif meta.get("device_class") == "opening":
                     entity = DoorProtectBinarySensor(device, meta, hub_id, api)
+                elif meta.get("device_class") == "motion":
+                    entity = MotionProtectBinarySensor(device, meta, hub_id, api)
                 else:
                     entity = AjaxBinarySensor(device, meta, hub_id, api)
                 entities.append(entity)
@@ -38,7 +40,7 @@ class AjaxBinarySensor(BinarySensorEntity):
         self._attr_unique_id = f"ajax_{device.get('id')}_{meta.get('device_class')}"
         self._attr_device_class = meta.get("device_class")
         self._alarm_detected = None
-        self._battery = None
+        # self._battery = None
         
 
     @property
@@ -47,7 +49,7 @@ class AjaxBinarySensor(BinarySensorEntity):
 
     async def async_update(self):
         device_info = await self.api.get_device_info(self.hub_id, self._device.get('id'))
-        self._battery = device_info.get('batteryChargeLevelPercentage')
+        # self._battery = device_info.get('batteryChargeLevelPercentage')
     
     @property
     def device_info(self):
@@ -58,11 +60,11 @@ class AjaxBinarySensor(BinarySensorEntity):
             "model": self._meta.get("device_class", "Unknown"),
         }
 
-    @property
-    def extra_state_attributes(self):
-        return {
-            "battery_level": self._battery,
-        }
+    # @property
+    # def extra_state_attributes(self):
+    #     return {
+    #         "battery_level": self._battery,
+    #     }
       
 
 
@@ -97,14 +99,20 @@ class FireProtectBinarySensor(AjaxBinarySensor):
 
     @property
     def extra_state_attributes(self):
-        attrs = super().extra_state_attributes.copy()
-        attrs.update({
+        # attrs = super().extra_state_attributes.copy()
+        # attrs.update({
+        #     "smoke_alarm": self._smoke_alarm,
+        #     "temperature_alarm": self._temperature_alarm,
+        #     "temperature_rise_alarm": self._htemp_diff_alarm,
+        #     "high_co": self._co_alarm
+        # })
+        # return attrs
+        return {
             "smoke_alarm": self._smoke_alarm,
             "temperature_alarm": self._temperature_alarm,
             "temperature_rise_alarm": self._htemp_diff_alarm,
             "high_co": self._co_alarm
-        })
-        return attrs
+        }
 
 
 
@@ -140,12 +148,16 @@ class DoorProtectBinarySensor(AjaxBinarySensor):
 
     @property
     def extra_state_attributes(self):
-        attrs = super().extra_state_attributes.copy()
-        attrs.update({
+        # attrs = super().extra_state_attributes.copy()
+        # attrs.update({
+        #     "reed_closed": self._reed_closed,
+        #     "extra_contact_alarm": self._extra_contact_alarm,
+        # })
+        # return attrs
+        return {
             "reed_closed": self._reed_closed,
             "extra_contact_alarm": self._extra_contact_alarm,
-        })
-        return attrs
+        }
 
 
     @property
@@ -155,4 +167,39 @@ class DoorProtectBinarySensor(AjaxBinarySensor):
             "name": "Ajax DoorProtect",
             "manufacturer": "Ajax",
             "model": "DoorProtect",
+        }
+
+class MotionProtectBinarySensor(AjaxBinarySensor):
+    def __init__(self, device, meta, hub_id, api):
+        super().__init__(device, meta, hub_id, api)
+        self._sensor_state = None
+        
+
+
+    @property
+    def is_on(self):
+        return False
+
+    async def async_update(self):
+        await super().async_update()
+        device_info = await self.api.get_device_info(self.hub_id, self._device.get("id"))
+        self._sensor_state = device_info.get("state")
+    
+
+
+    @property
+    def extra_state_attributes(self):
+        return {
+            "raw_state": self._sensor_state
+    }
+    
+
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, f"ajax_{self._device.get('id')}")},
+            "name": "Ajax MotionProtect",
+            "manufacturer": "Ajax",
+            "model": "MotionProtect",
         }

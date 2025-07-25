@@ -27,19 +27,23 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         self._attr_name = "Ajax Hub"
         self._raw_state = STATE_UNKNOWN
         self.api = api
-        self._attr_supported_features = AlarmControlPanelEntityFeature.ARM_AWAY
+        self._attr_supported_features = (
+            AlarmControlPanelEntityFeature.ARM_AWAY |
+            AlarmControlPanelEntityFeature.ARM_NIGHT
+        )
         self.hub_id = hub_id
 
     def map_ajax_state_to_ha(self, state):
-        from homeassistant.components.alarm_control_panel import AlarmControlPanelState
-        if state == "DISARMED_NIGHT_MODE_OFF":
+        if state in ["DISARMED_NIGHT_MODE_OFF", "DISARMED_NIGHT_MODE_ON"]:
             return AlarmControlPanelState.DISARMED
         if state == "ARMED_NIGHT_MODE_OFF":
             return AlarmControlPanelState.ARMED_AWAY
+        if state == "ARMED_NIGHT_MODE_ON":
+            return AlarmControlPanelState.ARMED_NIGHT
         return None
 
     @property
-    def alarm_state(self):
+    def state(self):
         return self.map_ajax_state_to_ha(self._raw_state)
 
     async def async_added_to_hass(self):
@@ -61,6 +65,13 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         _LOGGER.info("Arm away called")
         result = await self.api.arm_hub(self.hub_id)
         _LOGGER.info("Arm result: %s", result)
+        await self.async_update()
+        self.async_write_ha_state()
+
+    async def async_alarm_arm_night(self, code=None):
+        _LOGGER.info("Arm night mode called")
+        result = await self.api.arm_hub_night(self.hub_id)
+        _LOGGER.info("Arm night result: %s", result)
         await self.async_update()
         self.async_write_ha_state()
 

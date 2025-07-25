@@ -12,9 +12,11 @@ def map_ajax_device(device: dict) -> list[tuple[str, dict]]:
         "motionprotect", "motionprotectplus", "motionprotectoutdoor", "motionprotectcurtain"
     ]:
         result.append(("binary_sensor", {"device_class": "motion"}))
+        result.append(("sensor", {"device_class": "motion_temperature", "unit": "°C"}))
 
     elif device_type in ["doorprotect", "doorprotectplus"]:
         result.append(("binary_sensor", {"device_class": "opening"}))
+        result.append(("sensor", {"device_class": "door_temperature", "unit": "°C"}))
 
     elif device_type == "glassprotect":
         result.append(("binary_sensor", {"device_class": "sound"}))
