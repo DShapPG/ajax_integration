@@ -161,7 +161,7 @@ class AjaxAPI:
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/commands/arming"
         payload = {
-            "command": "ARM_NIGHT",
+            "command": "NIGHT_MODE_ON",
             "ignoreProblems": True
         }
         async with aiohttp.ClientSession() as session:

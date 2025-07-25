@@ -27,10 +27,10 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         self._attr_name = "Ajax Hub"
         self._raw_state = STATE_UNKNOWN
         self.api = api
-        self._attr_supported_features = (
-            AlarmControlPanelEntityFeature.ARM_AWAY |
-            AlarmControlPanelEntityFeature.ARM_NIGHT
-        )
+        # self._attr_supported_features = (
+        #     AlarmControlPanelEntityFeature.ARM_AWAY |
+        #     AlarmControlPanelEntityFeature.ARM_NIGHT
+        # )
         self.hub_id = hub_id
 
     def map_ajax_state_to_ha(self, state):
@@ -41,6 +41,13 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         if state == "ARMED_NIGHT_MODE_ON":
             return AlarmControlPanelState.ARMED_NIGHT
         return None
+
+    @property
+    def supported_features(self):
+        return (
+            AlarmControlPanelEntityFeature.ARM_AWAY |
+            AlarmControlPanelEntityFeature.ARM_NIGHT
+        )
 
     @property
     def state(self):
@@ -69,9 +76,9 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         self.async_write_ha_state()
 
     async def async_alarm_arm_night(self, code=None):
-        _LOGGER.info("Arm night mode called")
+        _LOGGER.error("Arm night mode called")
         result = await self.api.arm_hub_night(self.hub_id)
-        _LOGGER.info("Arm night result: %s", result)
+        _LOGGER.error("Arm night result: %s", result)
         await self.async_update()
         self.async_write_ha_state()
 
