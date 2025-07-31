@@ -50,7 +50,7 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         )
 
     @property
-    def state(self):
+    def alarm_state(self):
         return self.map_ajax_state_to_ha(self._raw_state)
 
     async def async_added_to_hass(self):

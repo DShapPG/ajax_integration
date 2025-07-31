@@ -58,6 +58,9 @@ class AjaxAPI:
                 headers=self.headers
             ) as resp:
                 data = await resp.json()
+        if "sessionToken" not in data or "refreshToken" not in data or data.get("message") == "User is not authorized":
+            _LOGGER.error(f"Failed to refresh token! Response: {data}")
+            raise Exception(f"Failed to refresh token: {data}")
         self.session_token = data["sessionToken"]
         self.refresh_token = data["refreshToken"]
         self.headers["X-Session-Token"] = self.session_token
