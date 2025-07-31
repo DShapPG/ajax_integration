@@ -11,7 +11,7 @@ _LOGGER = logging.getLogger(__name__)
 
 async def async_setup_entry(hass, config_entry, async_add_entities):
     data = hass.data[DOMAIN][config_entry.entry_id]
-    api = AjaxAPI(data, hass=hass, entry=config_entry)
+    api = hass.data[DOMAIN][config_entry.entry_id]["api"]
     hubs = data.get("hubs", [])
     entities = [AjaxAlarmPanel(api, hub["hubId"]) for hub in hubs]
     async_add_entities(entities)
