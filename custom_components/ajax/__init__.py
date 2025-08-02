@@ -89,7 +89,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
         except Exception as e:
             _LOGGER.exception("Failed to fetch hubs or devices: %s", e)
-            return False
+            return True
 
         # Determine required platforms based on device types
         platforms = set()
@@ -111,6 +111,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         # Forward setup to all required platforms
         await hass.config_entries.async_forward_entry_setups(entry, list(platforms))
+        hass.data[DOMAIN][entry.entry_id]["loaded_platforms"] = list(platforms)
         
         return True
     
@@ -119,14 +120,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     _LOGGER.error(f"HASS STATE BEFORE:{hass.state}")   
     if hass.state == CoreState.running:
         _LOGGER.error("HASS already running, run setup now")
-        await do_setup()
+        setup_result = await do_setup()
     else:
         _LOGGER.error("Waiting for HASS to start...")
         async def _handle_started(event):
             await do_setup()
 
         hass.bus.async_listen_once(EVENT_HOMEASSISTANT_STARTED, _handle_started)
-    return True
+        setup_result = True
+    
+    return setup_result
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
@@ -134,11 +137,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Remove platforms (sensor, binary_sensor, etc.)
     platforms = entry.data.get("platforms", [])
     _LOGGER.error(f"PLATFORMS:{platforms}")
+    loaded_platforms = hass.data[DOMAIN][entry.entry_id].get("loaded_platforms", [])
+    _LOGGER.error(f"Loaded platforms to unload: {loaded_platforms}")
 
     if platforms:
         _LOGGER.error("PLATFORMS TRUE")
-        unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
-    else:
+        unload_ok = await hass.config_entries.async_unload_platforms(entry, loaded_platforms)
         _LOGGER.error("PLATFORMS FALSE")
         unload_ok = True
 

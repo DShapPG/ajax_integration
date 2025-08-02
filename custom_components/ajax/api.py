@@ -279,8 +279,10 @@ class AjaxAPI:
             )
 
         if self.hass.state == CoreState.running:
+            _LOGGER.error("API STATE TRUE.")
             self.hass.async_create_task(trigger_reauth())
         else:
+            _LOGGER.error("API STATE FALSE.")
             # Wait for HASS to fully start before showing UI
             self.hass.bus.async_listen_once(
                 EVENT_HOMEASSISTANT_STARTED,
