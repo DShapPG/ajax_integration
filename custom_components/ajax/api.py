@@ -267,11 +267,13 @@ class AjaxAPI:
         """Trigger reauth flow for expired refresh token, ensuring HA is fully started first."""
         if not self.hass or not self.entry:
             return
-
+        await self.hass.config_entries.async_show_reauth_prompt(self.entry.entry_id)
         self._reauth_in_progress = True
         _LOGGER.warning("Ajax refresh token expired, triggering reauth flow")
+        
 
         async def trigger_reauth():
+            
             await self.hass.config_entries.flow.async_init(
                 self.entry.domain,
                 context={"source": "reauth", "entry_id": self.entry.entry_id},
