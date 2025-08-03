@@ -5,6 +5,7 @@ import functools
 from aiohttp import ClientResponseError
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from homeassistant.core import CoreState
+from homeassistant.exceptions import ConfigEntryAuthFailed
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,24 +69,35 @@ class AjaxAPI:
         # if self.hass.state != "RUNNING":
         #     _LOGGER.warning("HA not running yet, skipping token refresh")
         #     return
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{self.base_url}/refresh",
-                json={
-                    "userId": self.user_id,
-                    "refreshToken": self.refresh_token
-                },
-                headers=self.headers
-            ) as resp:
-                if resp.status != 200:
-                    text = await resp.text()
-                    _LOGGER.error(f"Failed refresh token: HTTP {resp.status} - {text}")
-                    # If HTTP 401, trigger reauth flow (only once)
-                    if resp.status == 401 and hasattr(self, 'hass') and self.hass and hasattr(self, 'entry') and self.entry:
-                        if not self._reauth_in_progress:
-                           await self._create_reauth_notification()
-                    raise AjaxAPIError(f"Failed refresh token: HTTP {resp.status}")
-                data = await resp.json()
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{self.base_url}/refresh",
+                    json={
+                        "userId": self.user_id,
+                        "refreshToken": self.refresh_token
+                    },
+                    headers=self.headers
+                ) as resp:
+
+                    # Проверяем статус ответа
+                    if resp.status == 401 or resp.status == 403:
+                        # Неавторизованный — токен недействителен
+                        text = await resp.text()
+                        _LOGGER.error(f"Refresh token unauthorized: {resp.status} {text}")
+                        raise ConfigEntryAuthFailed(f"Unauthorized refresh token: {resp.status}")
+
+                    resp.raise_for_status()  # выбросит исключение на другие ошибки HTTP
+
+                    data = await resp.json()
+                    # тут обновляем токены и т.д.
+
+        except aiohttp.ClientResponseError as e:
+            _LOGGER.error(f"HTTP error during token refresh: {e}")
+            raise ConfigEntryAuthFailed(f"HTTP error: {e}") from e
+        except Exception as e:
+            _LOGGER.error(f"Unexpected error during token refresh: {e}")
+            raise ConfigEntryAuthFailed
 
         if ("sessionToken" not in data or
             "refreshToken" not in data or
@@ -93,18 +105,13 @@ class AjaxAPI:
             _LOGGER.error(f"Failed to refresh token! Response: {data}")
             # Check if refresh token is expired (older than 7 days)
             if hasattr(self, 'hass') and self.hass and hasattr(self, 'entry') and self.entry:
-                if not self._reauth_in_progress:
-                   await self._create_reauth_notification()
+                raise 
             raise AjaxAPIError(f"Refresh token expired or invalid. Please re-authenticate: {data}")
 
         self.session_token = data["sessionToken"]
         self.refresh_token = data["refreshToken"]
         self.headers["X-Session-Token"] = self.session_token
-        self.session_created_at = time.time()
-        # Reset reauth flag on successful refresh
-        _LOGGER.error("BEFORE REAUTH FLAG")
-        self._reauth_in_progress = False
-        _LOGGER.error("REAUTH FLAG PASSED")
+        self.session_created_at = time.time()    
 
         # Save new tokens to config entry
         _LOGGER.error(f"HASS: {self.hass!r} ({bool(self.hass)}) ENTRY: {self.entry!r} ({bool(self.entry)})")
@@ -148,20 +155,15 @@ class AjaxAPI:
         if isinstance(data, dict) and data.get("message") == "User is not authorized":
             _LOGGER.warning("User is not authorized in get_hubs response: %s", data)
 
-            try:
-                # Try to refresh the token
-                refreshed = await self.update_refresh_token()
-                _LOGGER.error(f"REFRESHED:{refreshed}")
-            except Exception as e:
-                _LOGGER.error("Token refresh failed: %s", e)
-                refreshed = False
+
+            # Try to refresh the token
+            refreshed = await self.update_refresh_token()
+            _LOGGER.error(f"REFRESHED:{refreshed}")
+        
 
             if not refreshed:
                 # Create notification if refresh failed and no reauth in progress
-                if not self._reauth_in_progress:
-                    await self._create_reauth_notification()
-                raise AjaxAPIError(f"User is not authorized and token refresh failed: {data}")
-
+                raise ConfigEntryAuthFailed
             #Retry the request with new token
             return await self.get_hubs()
         
@@ -263,36 +265,7 @@ class AjaxAPI:
                     result = await resp.json()
         return result
 
-    async def _create_reauth_notification(self):
-        """Trigger reauth flow for expired refresh token, ensuring HA is fully started first."""
-        if not self.hass or not self.entry:
-            return
-        await self.hass.config_entries.async_show_reauth_prompt(self.entry.entry_id)
-        self._reauth_in_progress = True
-        _LOGGER.warning("Ajax refresh token expired, triggering reauth flow")
-        
-
-        async def trigger_reauth():
-            
-            await self.hass.config_entries.flow.async_init(
-                self.entry.domain,
-                context={"source": "reauth", "entry_id": self.entry.entry_id},
-                data=self.entry.data,
-            )
-
-        if self.hass.state == CoreState.running:
-            _LOGGER.error("API STATE TRUE.")
-            self.hass.async_create_task(trigger_reauth())
-        else:
-            _LOGGER.error("API STATE FALSE.")
-            # Wait for HASS to fully start before showing UI
-            self.hass.bus.async_listen_once(
-                EVENT_HOMEASSISTANT_STARTED,
-                lambda event: self.hass.async_create_task(trigger_reauth())
-            )
-
-        await self.update_refresh_token()
-
+   
             
 
     @handle_unauthorized
