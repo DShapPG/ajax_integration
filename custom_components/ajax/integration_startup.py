@@ -1,4 +1,5 @@
 import logging
+from aiohttp import ClientSession, ClientTimeout
 from .const import DOMAIN
 from .device_mapper import map_ajax_device
 from .api import AjaxAPI
@@ -6,8 +7,10 @@ _LOGGER = logging.getLogger(__name__)
 
 async def do_setup(hass, entry):
     _LOGGER.error(f"INIT HASS: {hass!r} ({bool(hass)}) ENTRY: {entry!r} ({bool(entry)})")
-    api = AjaxAPI(entry.data, hass, entry)
+    session = ClientSession(timeout=ClientTimeout(total=10))
+    api = AjaxAPI(entry.data, hass, entry, session)
     hass.data[DOMAIN][entry.entry_id]["api"] = api
+    hass.data[DOMAIN][entry.entry_id]["session"] = session
 
 
     # Only refresh token if session token is expired or close to expiring

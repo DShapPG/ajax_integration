@@ -1,6 +1,7 @@
 from homeassistant.components.alarm_control_panel.const import AlarmControlPanelEntityFeature
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity, AlarmControlPanelState
 from homeassistant.const import STATE_UNKNOWN
+import time
 import logging
 
 from .api import AjaxAPI
@@ -48,31 +49,38 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         await self.async_update()
 
     async def async_update(self):
+        start = time.perf_counter()
         hub_info = await self.api.get_hub_info(self.hub_id)
+        _LOGGER.error("API response time: %.2f sec", time.perf_counter() - start)
         if not hub_info:
             _LOGGER.warning("Hub info is not available for update")
             return
 
         self._raw_state = hub_info["state"]
         self._attr_name = f"{hub_info['name']} ({hub_info['id']})"
+        self.async_schedule_update_ha_state()
 
     async def async_alarm_disarm(self, code=None):
         _LOGGER.info("Disarm called")
+        start = time.perf_counter()
         await self.api.disarm_hub(self.hub_id)
+        _LOGGER.error("API disarm time: %.2f sec", time.perf_counter() - start)
         await self.async_update()
-        self.async_schedule_update_ha_state()
+        
 
     async def async_alarm_arm_away(self, code=None):
         _LOGGER.info("Arm away called")
+        start = time.perf_counter()
         await self.api.arm_hub(self.hub_id)
+        _LOGGER.error("API arm time: %.2f sec", time.perf_counter() - start)
         await self.async_update()
-        self.async_schedule_update_ha_state()
+        
 
     async def async_alarm_arm_night(self, code=None):
         _LOGGER.info("Arm night called")
         await self.api.arm_hub_night(self.hub_id)
         await self.async_update()
-        self.async_schedule_update_ha_state()
+        
 
     @property
     def code_format(self):
@@ -85,3 +93,17 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
     @property
     def code_disarm_required(self):
         return False
+
+    @property
+    def unique_id(self):
+        return f"ajax_{self.hub_id}_alarm"
+
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, f"ajax_hub_{self.hub_id}")},
+            "name": "Ajax Hub",
+            "manufacturer": "Ajax",
+            "model": "Hub",
+        }

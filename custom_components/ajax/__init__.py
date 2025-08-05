@@ -2,7 +2,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 import logging
 import time
-import asyncio
 from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
 from .const import DOMAIN
 from .api import AjaxAPI
