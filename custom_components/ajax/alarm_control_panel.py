@@ -3,6 +3,7 @@ from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity
 from homeassistant.const import STATE_UNKNOWN
 import time
 import logging
+import asyncio
 
 from .api import AjaxAPI
 from .const import DOMAIN
@@ -65,6 +66,7 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         start = time.perf_counter()
         await self.api.disarm_hub(self.hub_id)
         _LOGGER.error("API disarm time: %.2f sec", time.perf_counter() - start)
+        await asyncio.sleep(1)
         await self.async_update()
         
 
@@ -73,12 +75,14 @@ class AjaxAlarmPanel(AlarmControlPanelEntity):
         start = time.perf_counter()
         await self.api.arm_hub(self.hub_id)
         _LOGGER.error("API arm time: %.2f sec", time.perf_counter() - start)
+        await asyncio.sleep(1)
         await self.async_update()
         
 
     async def async_alarm_arm_night(self, code=None):
         _LOGGER.info("Arm night called")
         await self.api.arm_hub_night(self.hub_id)
+        await asyncio.sleep(1)
         await self.async_update()
         
 

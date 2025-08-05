@@ -175,8 +175,9 @@ class AjaxAPI:
             
         return data
 
-    
+    @handle_unauthorized
     async def get_hub_info(self, hub_id):
+        start = time.perf_counter()
         await self.ensure_token_valid()
         async with self.session.get(
             f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}",
@@ -195,9 +196,11 @@ class AjaxAPI:
         if "state" not in info:
             _LOGGER.error("No 'state' in hub info response: %s", info)
             return None
+        _LOGGER.error("API get hub info_time: %.2f sec", time.perf_counter() - start)
+        _LOGGER.error(f"API get hub info: {info["state"]}")
         return info
 
-    
+    @handle_unauthorized
     async def arm_hub(self, hub_id):
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/commands/arming"
@@ -215,7 +218,7 @@ class AjaxAPI:
         _LOGGER.info("Arm hub result: %s", result)
         return result
 
-    
+    @handle_unauthorized
     async def disarm_hub(self, hub_id):
         await self.ensure_token_valid()
         url = f"{self.base_url}/user/{self.user_id}/hubs/{hub_id}/commands/arming"
