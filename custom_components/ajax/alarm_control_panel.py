@@ -1,12 +1,16 @@
 from homeassistant.components.alarm_control_panel.const import AlarmControlPanelEntityFeature
 from homeassistant.components.alarm_control_panel import AlarmControlPanelEntity, AlarmControlPanelState
 from homeassistant.const import STATE_UNKNOWN
+from datetime import timedelta
 import time
 import logging
 import asyncio
 
 from .api import AjaxAPI
 from .const import DOMAIN
+
+
+SCAN_INTERVAL = timedelta(seconds=15)
 
 _LOGGER = logging.getLogger(__name__)
 
